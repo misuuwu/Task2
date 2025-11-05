@@ -79,6 +79,7 @@ class ResumeApp:
         self.tag_bg_light = "#e9ecef"   
         self.button_bg_light = "#e0ffff" 
         self.button_fg_dark = "#004040"  
+        self.alt_bg_color = "#f5f5f5"   # NEW: Light gray for subtle alternating rows
 
         # --- List of Pastel Colors for Hover Effect ---
         self.pastel_colors = [
@@ -105,6 +106,23 @@ class ResumeApp:
 
         s.configure('WhiteBackground.TFrame', background='white', relief='flat', borderwidth=0)
         s.configure('WhiteBackground.TLabel', background='white', foreground=self.text_color)
+
+        # NEW: Card Style for the Profile Header (Subtle border for an elevated look)
+        s.configure('Card.TFrame', 
+                    background='white', 
+                    relief='solid', 
+                    borderwidth=1, 
+                    bordercolor=self.border_color # Note: This will not work on all themes/systems 
+                   ) 
+        s.layout('Card.TFrame', [
+            ('TFrame.border', {'sticky': 'nswe', 'children': [
+                ('TFrame.padding', {'sticky': 'nswe', 'children': [
+                    ('TFrame.label', {'sticky': 'nswe'})
+                ]})
+            ]})
+        ])
+
+
         
         # --- Project Card Styling (CLEAN LOOK) ---
         s.configure('ProjectContainer.TFrame', background='white', borderwidth=0, relief='flat', padding=0) 
@@ -139,9 +157,10 @@ class ResumeApp:
         s.configure('ExperienceImage.TFrame', background='#f0f0f0', borderwidth=1, relief='solid', padding=10) 
         s.configure('ExperienceImage.TLabel', background='#f0f0f0') 
         
-        # --- Table/Grid Styling for Activities ---
+        # --- Table/Grid Styling for Activities (ALTERNATING ROW STYLES) ---
         s.configure('ActivityHeader.TLabel', font=('Arial', 9, 'bold'), foreground='black', background='white')
         s.configure('ActivityBody.TLabel', font=('Arial', 9), foreground='black', background='white')
+        s.configure('ActivityAltBody.TLabel', font=('Arial', 9), foreground='black', background=self.alt_bg_color) # NEW ALTERNATING STYLE
 
 
         # --- Main Button Styling (IMPROVED RESPONSIVENESS) ---
@@ -178,6 +197,10 @@ class ResumeApp:
               font=[('pressed', ('Arial', 10, 'bold')), ('active', ('Arial', 10, 'bold'))]
              )
         
+        # NEW: Active Tab Style for a stronger indicator
+        s.configure('ActiveTab.TButton', background=self.primary_color, foreground='white', font=('Arial', 10, 'bold'),
+                    relief='flat', padding=(10, 5))
+
         self.create_widgets()
 
 
@@ -213,10 +236,16 @@ class ResumeApp:
     # --- Load and Prepare Experience Images (INCREASED SIZE) ---
     def load_experience_image(self, file_name, width=400, height=300): 
         try:
-            if not os.path.exists(file_name):
+            # Check for placeholder image provided by user (image_6eb32c.png or image_6eba6e.png)
+            if file_name == "ecommerce_project.png" and os.path.exists("image_6eb32c.png"):
+                 original_image = Image.open("image_6eb32c.png") 
+            elif file_name == "flutter_project.png" and os.path.exists("image_6eba6e.png"):
+                 original_image = Image.open("image_6eba6e.png") 
+            elif not os.path.exists(file_name):
                  return ImageTk.PhotoImage(Image.new('RGB', (width, height), color='lightgray'))
+            else:
+                 original_image = Image.open(file_name) 
                  
-            original_image = Image.open(file_name) 
             original_width, original_height = original_image.size
             ratio = min(width / original_width, height / original_height)
             new_width = int(original_width * ratio)
@@ -291,9 +320,10 @@ class ResumeApp:
         download_button.pack(side='right')
         Tooltip(download_button, "Open the linked GitHub repository in a new window.")
 
-        # --- Profile Header Frame (The White Card) ---
-        header_frame = ttk.Frame(self.main_content_frame, padding=(20, 15), style='WhiteBackground.TFrame')
-        header_frame.pack(fill='x', pady=(0, 10), padx=20) 
+        # --- Profile Header Frame (The White Card - FIX: Removed invalid border options) ---
+        header_frame = ttk.Frame(self.main_content_frame, padding=(20, 15), 
+                                 style='Card.TFrame') # Use the new Card style
+        header_frame.pack(fill='x', pady=(10, 10), padx=20) # Slightly increased padding around the card
         
         header_frame.grid_columnconfigure(0, weight=0) 
         header_frame.grid_columnconfigure(1, weight=1) 
@@ -301,7 +331,8 @@ class ResumeApp:
         # --- PHOTO INTEGRATION / FALLBACK ---
         photo = self.load_photo()
         if photo:
-            photo_label = ttk.Label(header_frame, image=photo, background='white')
+            # Note: The image will still be on a white background from the style 'Card.TFrame'
+            photo_label = ttk.Label(header_frame, image=photo, background='white') 
             photo_label.grid(row=0, column=0, rowspan=3, padx=(0, 15), sticky='n')
             photo_label.image = photo 
         else:
@@ -312,13 +343,14 @@ class ResumeApp:
 
 
         # --- Info Frame (Text container) ---
-        info_frame = ttk.Frame(header_frame, style='WhiteBackground.TFrame')
+        # The inner frame uses the standard WhiteBackground.TFrame to ensure elements are white
+        info_frame = ttk.Frame(header_frame, style='WhiteBackground.TFrame') 
         info_frame.grid(row=0, column=1, rowspan=3, sticky='nsew')
         
         # Name 
         ttk.Label(info_frame, text="Aiko Lindsay J. Pahuyo", style='Header.TLabel', background='white').pack(anchor='w')
         
-        ttk.Label(info_frame, text="Computer Science Student", style='Subtitle.TLabel', background='white').pack(anchor='w')
+        ttk.Label(info_frame, text="Technical Vocational Student", style='Subtitle.TLabel', background='white').pack(anchor='w')
 
         # --- Combined Bio and Objective ---
         combined_text = """Passionate student developer seeking opportunities to apply foundational knowledge in full-stack development. Proficient in modern programming languages and collaborative development tools. I aim to explore different work environments to gain hands-on experience and learn new skills. By doing so, I hope to enhance my professional growth and shape my future career path. I want to help my team and company by taking on new challenges, learning new things, and working together with my colleagues to reach our goals."""
@@ -380,7 +412,7 @@ class ResumeApp:
 
         # --- Content Area ---
         # This container holds the active tab content
-        self.content_container_frame = ttk.Frame(self.main_content_frame, padding=(20, 0), style='TFrame')
+        self.content_container_frame = ttk.Frame(self.main_content_frame, style='TFrame')
         self.content_container_frame.pack(fill='both', expand=True, padx=20, pady=(0, 20)) 
 
         self.experience_frame = self.create_experience_tab(self.content_container_frame)
@@ -408,13 +440,12 @@ class ResumeApp:
         elif tab_name == "Education":
             self.education_frame.pack(fill='both', expand=True)
 
-        # Update button styles
+        # Update button styles (NEW: Use ActiveTab.TButton for a strong indicator)
         for btn in self.tab_buttons:
             if btn.cget('text') == tab_name:
-                btn.state(['pressed', '!active']) 
-                btn.configure(style='Tab.TButton')
+                btn.configure(style='ActiveTab.TButton')
             else:
-                btn.state(['!pressed'])
+                btn.configure(style='Tab.TButton')
                 
         # Reconfigure scroll region after changing tab content
         self.master.update_idletasks() 
@@ -476,6 +507,7 @@ class ResumeApp:
         ecommerce_card_frame = ttk.Frame(all_images_wrapper_frame, style='ExperienceImage.TFrame')
         ecommerce_card_frame.grid(row=0, column=0, padx=5, pady=5, sticky='nsew')
         
+        # Using placeholder image 'image_6eb32c.png' for the first card
         ecommerce_img = self.load_experience_image("ecommerce_project.png") 
         if ecommerce_img:
             ttk.Label(ecommerce_card_frame, image=ecommerce_img, style='ExperienceImage.TLabel').pack()
@@ -485,6 +517,7 @@ class ResumeApp:
         flutter_card_frame = ttk.Frame(all_images_wrapper_frame, style='ExperienceImage.TFrame')
         flutter_card_frame.grid(row=0, column=1, padx=5, pady=5, sticky='nsew')
         
+        # Using placeholder image 'image_6eba6e.png' for the second card
         flutter_img = self.load_experience_image("flutter_project.png") 
         if flutter_img:
             ttk.Label(flutter_card_frame, image=flutter_img, style='ExperienceImage.TLabel').pack()
@@ -494,6 +527,7 @@ class ResumeApp:
         blender_card_frame = ttk.Frame(all_images_wrapper_frame, style='ExperienceImage.TFrame')
         blender_card_frame.grid(row=0, column=2, padx=5, pady=5, sticky='nsew')
         
+        # Fallback/Default image for the third card
         blender_img = self.load_experience_image("blender_project.png") 
         if blender_img:
             ttk.Label(blender_card_frame, image=blender_img, style='ExperienceImage.TLabel').pack()
@@ -517,7 +551,7 @@ class ResumeApp:
             projects_container,
             title="E-Commerce Platform (Mobile & Web)",
             description="A fully functional mobile-first e-commerce application demonstrating robust front-end architecture, product catalog viewing, and dynamic cart management. Focus was placed on clean, reusable UI components and accessibility. This project was a key capstone experience.",
-            tech_used="React, Node.js, MongoDB (MERN Stack), Tailwind CSS",
+            tech_used="HTML, Tailwind CSS, JavaScript, Firebase (Hosting & Firestore)",
             repo_link="https://github.com/misuuwu/Ecommerce-API"
         )
         
@@ -535,7 +569,7 @@ class ResumeApp:
             projects_container,
             title="Flashwise V1 (Study Companion)",
             description="An interactive study application designed to gamify the learning process using flashcards and spaced repetition logic. The desktop application aims to increase knowledge retention and engagement for various subjects.",
-            tech_used="Python, Tkinter, Data Persistence (JSON)",
+            tech_used="Python, HTML, Tailwind CSS, JScript, Data Persistence (JSON)",
             repo_link="https://github.com/misuuwu/Flashwise_V1",
             is_last=True 
         )
@@ -585,9 +619,10 @@ class ResumeApp:
         
         skill_tag_frame_1_b = ttk.Frame(frame, style='WhiteBackground.TFrame')
         skill_tag_frame_1_b.pack(fill='x', anchor='w', pady=(0, 10))
-        
-        create_hover_tag(skill_tag_frame_1_b, "Filipino (Native)")
-        create_hover_tag(skill_tag_frame_1_b, "English (Proficient)")
+
+        create_hover_tag(skill_tag_frame_1_b, "HTML5")
+        create_hover_tag(skill_tag_frame_1_b, "CSS3")
+    
 
 
         # Frameworks/Tools Group 
@@ -637,7 +672,7 @@ class ResumeApp:
         return frame
 
 
-    # --- Education Tab Content ---
+    # --- Education Tab Content (NEW: Alternating Row Colors in Activities) ---
     def create_education_tab(self, parent_frame):
         frame = ttk.Frame(parent_frame, style='WhiteBackground.TFrame')
         
@@ -659,7 +694,7 @@ class ResumeApp:
         # GPA box 
         tk.Label(
             degree_frame, 
-            text="3.9 GPA", 
+            text="1.5 GPA", 
             font=("Arial", 9, "bold"), 
             background=self.primary_color, 
             foreground="white",
@@ -669,7 +704,7 @@ class ResumeApp:
 
         # School
         ttk.Label(frame, text="Technological University of the Philippines", style='Body.TLabel', background='white').pack(anchor='w')
-        ttk.Label(frame, text="Major in Software Development | Expected May 2026", style='LightBody.TLabel', background='white').pack(anchor='w', pady=(0,15))
+        ttk.Label(frame, text="Major in Software Development | Expected May 2028", style='LightBody.TLabel', background='white').pack(anchor='w', pady=(0,15))
 
         # Key Coursework
         ttk.Label(frame, text="Key Coursework:", style='Title.TLabel', background='white').pack(anchor='w', pady=(0,5))
@@ -715,20 +750,31 @@ class ResumeApp:
         # Separator Line
         ttk.Separator(activities_frame, orient='horizontal').grid(row=1, column=0, columnspan=3, sticky='ew')
         
-        # --- Activity 1 ---
-        ttk.Label(activities_frame, text="2023 - 2024", style='ActivityBody.TLabel', anchor='w').grid(row=2, column=0, padx=5, pady=5, sticky='w')
-        ttk.Label(activities_frame, text="Alliance of Arts and Design Club", style='ActivityBody.TLabel', anchor='w').grid(row=2, column=1, padx=5, pady=5, sticky='w')
-        ttk.Label(activities_frame, text="Seargent of Arms", style='ActivityBody.TLabel', anchor='w').grid(row=2, column=2, padx=5, pady=5, sticky='w')
+        # --- Activities Data ---
+        activities = [
+            ("2023 - 2024", "Alliance of Arts and Design Club", "Seargent of Arms"),
+            ("2023 - 2024", "SeaUniversity", "Game Developer"),
+            ("2022 - 2023", "Technological University", "Research Assistant")
+        ]
 
-        # Separator Line
-        ttk.Separator(activities_frame, orient='horizontal').grid(row=3, column=0, columnspan=3, sticky='ew')
+        current_row = 2 
+        for i, (dates, org, pos) in enumerate(activities):
+            # NEW: Determine the style for alternating rows
+            # Note the use of ActivityAltBody.TLabel which uses self.alt_bg_color
+            style_name = 'ActivityBody.TLabel' if i % 2 == 0 else 'ActivityAltBody.TLabel'
+            
+            # --- Activity Row (Row i) ---
+            ttk.Label(activities_frame, text=dates, style=style_name, anchor='w').grid(row=current_row, column=0, padx=5, pady=8, sticky='w')
+            ttk.Label(activities_frame, text=org, style=style_name, anchor='w').grid(row=current_row, column=1, padx=5, pady=8, sticky='w')
+            ttk.Label(activities_frame, text=pos, style=style_name, anchor='w').grid(row=current_row, column=2, padx=5, pady=8, sticky='w')
 
-        # --- Activity 2 ---
-        ttk.Label(activities_frame, text="2023 - 2024", style='ActivityBody.TLabel', anchor='w').grid(row=4, column=0, padx=5, pady=5, sticky='w')
-        ttk.Label(activities_frame, text="SeaUniversity", style='ActivityBody.TLabel', anchor='w').grid(row=4, column=1, padx=5, pady=5, sticky='w')
-        ttk.Label(activities_frame, text="Game Developer", style='ActivityBody.TLabel', anchor='w').grid(row=4, column=2, padx=5, pady=5, sticky='w')
+            # Separator Line (Row i+1)
+            if i < len(activities) - 1:
+                 ttk.Separator(activities_frame, orient='horizontal').grid(row=current_row + 1, column=0, columnspan=3, sticky='ew')
+            
+            current_row += 2 
 
-
+        
         # --- Separator before Academic Achievements ---
         ttk.Separator(frame, orient='horizontal').pack(fill='x', pady=15)
 
@@ -738,11 +784,11 @@ class ResumeApp:
         
         # STI College Pasay-EDSA Section
         ttk.Label(frame, text="STI College Pasay-EDSA:", style='Subtitle.TLabel', background='white', foreground=self.light_text_color).pack(anchor='w')
-        ttk.Label(frame, text="• **With Honor** (2022 - 2024)", style='Body.TLabel', justify='left', background='white').pack(anchor='w', padx=10)
+        ttk.Label(frame, text="• With Honor (2022 - 2024)", style='Body.TLabel', justify='left', background='white').pack(anchor='w', padx=10)
         
         # Pasay City East High School Section
         ttk.Label(frame, text="Pasay City East High School:", style='Subtitle.TLabel', background='white', foreground=self.light_text_color).pack(anchor='w', pady=(10, 0))
-        ttk.Label(frame, text="• **With High Honors** (2018 - 2022)", style='Body.TLabel', justify='left', background='white').pack(anchor='w', padx=10, pady=(0, 10))
+        ttk.Label(frame, text="• With High Honors (2018 - 2022)", style='Body.TLabel', justify='left', background='white').pack(anchor='w', padx=10, pady=(0, 10))
 
         return frame
 
